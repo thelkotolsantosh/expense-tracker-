@@ -1,0 +1,74 @@
+from app import create_app, db
+from app.models import Category, Expense
+
+app = create_app()
+
+
+@app.shell_context_processor
+def make_shell_context():
+    return {"db": db, "Category": Category, "Expense": Expense}
+
+
+@app.cli.command("seed")
+def seed_db():
+    """Seed the database with sample data."""
+    from datetime import date, timedelta
+    from decimal import Decimal
+    import random
+
+    categories_data = [
+        ("Food & Dining", "#e74c3c"),
+        ("Transport", "#3498db"),
+        ("Entertainment", "#9b59b6"),
+        ("Health", "#2ecc71"),
+        ("Shopping", "#f39c12"),
+        ("Utilities", "#1abc9c"),
+    ]
+
+    categories = []
+    for name, color in categories_data:
+        existing = Category.query.filter_by(name=name).first()
+        if not existing:
+            cat = Category(name=name, color=color)
+            db.session.add(cat)
+            categories.append(cat)
+        else:
+            categories.append(existing)
+
+    db.session.flush()
+
+    sample_expenses = [
+        ("Grocery run", 85.40, 0),
+        ("Uber to airport", 34.00, 1),
+        ("Netflix subscription", 15.99, 2),
+        ("Gym membership", 49.00, 3),
+        ("New headphones", 120.00, 4),
+        ("Electric bill", 95.20, 5),
+        ("Lunch with team", 42.50, 0),
+        ("Monthly bus pass", 55.00, 1),
+        ("Concert tickets", 75.00, 2),
+        ("Dentist visit", 200.00, 3),
+        ("Running shoes", 110.00, 4),
+        ("Internet bill", 60.00, 5),
+        ("Coffee & snacks", 18.75, 0),
+        ("Parking fee", 12.00, 1),
+        ("Streaming service", 9.99, 2),
+    ]
+
+    today = date.today()
+    for i, (title, amount, cat_idx) in enumerate(sample_expenses):
+        expense_date = today - timedelta(days=i * 2)
+        expense = Expense(
+            title=title,
+            amount=Decimal(str(amount)),
+            category=categories[cat_idx],
+            date=expense_date,
+        )
+        db.session.add(expense)
+
+    db.session.commit()
+    print(f"✓ Seeded {len(categories_data)} categories and {len(sample_expenses)} expenses.")
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
